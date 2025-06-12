@@ -78,6 +78,22 @@ final class MiddlewareTests: XCTestCase {
         }
     }
 
+    func testCORSMiddlewareAnyAllowedOrigin() throws {
+        app.grouped(
+            CORSMiddleware(configuration: .init(allowedOrigin: .any(["foo", "bar"]), allowedMethods: [.GET], allowedHeaders: [.origin]))
+        ).get("order") { req -> String in
+            return "done"
+        }
+
+        try app.testable().test(.GET, "/order", headers: ["Origin": "foo"]) { res in
+            XCTAssertEqual(res.status, .ok)
+            XCTAssertEqual(res.body.string, "done")
+            XCTAssertEqual(res.headers[.vary], ["origin"])
+            XCTAssertEqual(res.headers[.accessControlAllowOrigin], ["foo"])
+            XCTAssertEqual(res.headers[.accessControlAllowHeaders], ["origin"])
+        }
+    }
+
     func testCORSMiddlewareVariedByRequestOrigin() throws {
         app.grouped(
             CORSMiddleware(configuration: .init(allowedOrigin: .originBased, allowedMethods: [.GET], allowedHeaders: [.origin]))
@@ -110,7 +126,7 @@ final class MiddlewareTests: XCTestCase {
         }
     }
 
-  func testCORSMiddlewareDyanmicOriginAllowed() throws {
+  func testCORSMiddlewareDynamicOriginAllowed() throws {
     app.grouped(
       CORSMiddleware(configuration: .init(
         allowedOrigin: .dynamic({ req in
@@ -132,7 +148,7 @@ final class MiddlewareTests: XCTestCase {
     try app.testable().test(.GET, "/order", headers: ["Origin": "http://example-123.com"]) { res in
       XCTAssertEqual(res.status, .ok)
       XCTAssertEqual(res.body.string, "done")
-      XCTAssertEqual(res.headers[.vary], [])
+      XCTAssertEqual(res.headers[.vary], ["origin"])
       XCTAssertEqual(res.headers[.accessControlAllowOrigin], ["http://example-123.com"])
       XCTAssertEqual(res.headers[.accessControlAllowHeaders], [""])
     }
@@ -140,7 +156,7 @@ final class MiddlewareTests: XCTestCase {
     try app.testable().test(.GET, "/order", headers: ["Origin": "foo"]) { res in
       XCTAssertEqual(res.status, .ok)
       XCTAssertEqual(res.body.string, "done")
-      XCTAssertEqual(res.headers[.vary], [])
+      XCTAssertEqual(res.headers[.vary], ["origin"])
       XCTAssertEqual(res.headers[.accessControlAllowOrigin], [])
       XCTAssertEqual(res.headers[.accessControlAllowHeaders], [""])
     }
